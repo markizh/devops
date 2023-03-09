@@ -1,0 +1,64 @@
+1. Linux Namespace
+Linux Namespace 是 Linux 内核用来隔离内核资源的方式。通过namespace技术可以实现资源之间的相互隔离，同一个namespace下的进程可以感知到彼此的变化，是docker实现的基础。
+目前Linux提供6类系统资源的隔离机制，分别是：
+Mount namespaces: 隔离文件系统挂载点
+UTS namespaces: 隔离主机名和域名信息
+IPC namespaces: 隔离进程间通信
+PID namespaces: 隔离进程的ID
+Network namespaces: 隔离网络资源
+User namespaces: 隔离用户和用户组的ID
+
+2. network namespaces 创建和管理
+
+# 创建网络命名空间ns
+root@docker-srv:~# ip netns add ns
+
+# 查看网络命名空间ns
+root@docker-srv:~# ip netns ls
+ns
+
+# 网络名称空间ns执行bash命令，此时已经进入网络名称空间ns，退出网络名称空间ns需要执行exit命令
+root@docker-srv:~# ip netns exec ns bash
+
+# 网络名称空间ns执行ip link查询网卡信息
+root@docker-srv:~# ip link
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+
+# 网络名称空间ns执行route -n查询路由信息
+root@docker-srv:~# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+
+# 退出网络名称空间ns回到宿主机
+root@docker-srv:~# exit
+exit
+
+# 查询宿主机的网卡信息
+root@docker-srv:~# ip link
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: ens192: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
+    link/ether 00:50:56:82:25:1c brd ff:ff:ff:ff:ff:ff
+    altname enp11s0
+3: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default
+    link/ether 02:42:ca:f4:40:6e brd ff:ff:ff:ff:ff:ff
+root@docker-srv:~# ip netns exec ns ip link
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+
+# 宿主机不进入ns网络名称空间查询网络名称空间ns的路由信息
+root@docker-srv:~# ip netns exec ns route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+
+# 宿主机查询网络名称空间ns的iptables信息
+root@docker-srv:~# ip netns exec ns iptables -L -n
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
